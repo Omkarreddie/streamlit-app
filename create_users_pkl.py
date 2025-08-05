@@ -5,8 +5,7 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 default_users = {
-    "admin": [hash_password("admin123"), "admin", "admin@example.com"],
-    "user": [hash_password("user123"), "user", "user1@example.com"]
+    "Here you can add your default users
 }
 
 with open("USERS.pkl", "wb") as f:
