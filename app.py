@@ -99,25 +99,46 @@ class InfowayApp():
                 st.error("Invalid Username or Password")
 
     def admin_dashboard(self):
+        # Scrolling Welcome Banner
         st.sidebar.markdown(
             "<marquee behaviour='scroll' direction='left' scrollamount='5' style='color: red; font-size:20px; font-style: italic;'>Welcome to the Infoway Dashboard!</marquee>",
             unsafe_allow_html=True,
         )
+
         st.header("Admin Panel")
 
-        # Admin navigation radio
-        admin_option = st.sidebar.radio("🛠️ Admin Menu", ["🏠 DashBoard", "🧩 Responsibilities", "👥 Roles", "🙋 Users"], key="admin_menu_radio")
+        # Initialize session state for admin menu
+        if "admin_menu_open" not in st.session_state:
+            st.session_state.admin_menu_open = False
 
-        # Sales Module Section
+        # Admin Main Menu Toggle
+        if st.sidebar.button("🛠️ Admin Menu" ):
+            st.tw("Infoway Techno Soft Solutions")
+            st.session_state.admin_menu_open = not st.session_state.admin_menu_open
+            st.session_state.page = None  # Reset page when toggling
+
+        # If Admin Menu is expanded
+        if st.session_state.admin_menu_open:
+            with st.sidebar:
+                st.markdown("**Admin Options:**")
+                if st.button("🏠 DashBoard"):
+                    st.session_state.page = "admin_dashboard"
+                if st.button("🧩 Responsibilities"):
+                    st.session_state.page = "responsibilities"
+                if st.button("👥 Roles"):
+                    st.session_state.page = "roles"
+                if st.button("🙋 Users"):
+                    st.session_state.page = "users"
+
+        # ---------------- SALES MODULE ---------------- #
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📦 Sales Module")
 
-        if "sales_module_open" not in st.session_state: 
+        if "sales_module_open" not in st.session_state:
             st.session_state.sales_module_open = False
-
         if st.sidebar.button("📦 Sales Dashboard"):
             st.session_state.sales_module_open = not st.session_state.sales_module_open
-            st.session_state.page = None  # Reset when toggling
+            st.session_state.page = None
 
         if st.session_state.sales_module_open:
             if st.session_state.role in ["admin", "salesmanager", "salesman1","salesman2"]:
@@ -127,38 +148,38 @@ class InfowayApp():
                 if st.sidebar.button("📈 View Budgeting"):
                     st.session_state.page = "budgeting"
 
-        st.sidebar.markdown("Purchase Module")
-        if "purchase_open" not in st.session_state: 
+        # ---------------- PURCHASE MODULE ---------------- #
+        st.sidebar.markdown("### 🛒 Purchase Module")
+
+        if "purchase_open" not in st.session_state:
             st.session_state.purchase_open = False
+
         if st.sidebar.button("📦 Purchase Dashboard"):
             st.session_state.purchase_open = not st.session_state.purchase_open
             st.session_state.page = None
-        
+
         if st.session_state.purchase_open:
             if st.session_state.role in ["admin", "purchasemanager", "purchaseasst1","purchaseasst2"]:
                 if st.sidebar.button("📊 View Purchase Chart"):
-                    st.session_state.page = "Purchase_dashboard"
+                    st.session_state.page = "purchase_dashboard"
             if st.session_state.role in ["admin", "purchasemanager"]:
                 if st.sidebar.button("📈 View Summary"):
-                    st.session_state.page = "Purchase summary"
+                    st.session_state.page = "purchase_summary"
 
+        # ---------------- FILE UPLOAD ---------------- #
         st.sidebar.title("📂 File Upload: PDF, Excel, CSV")
-
         uploaded_file = st.sidebar.file_uploader("Choose a file", type=["csv", "xlsx", "xls", "pdf"])
 
         if uploaded_file:
             file_type = uploaded_file.name.split(".")[-1].lower()
-            
             if file_type == "csv":
                 df = pd.read_csv(uploaded_file)
                 st.success("CSV file uploaded successfully.")
                 st.dataframe(df)
-
             elif file_type in ["xlsx", "xls"]:
                 df = pd.read_excel(uploaded_file)
                 st.success("Excel file uploaded successfully.")
                 st.dataframe(df)
-
             elif file_type == "pdf":
                 st.success("PDF file uploaded successfully.")
                 try:
@@ -173,40 +194,30 @@ class InfowayApp():
         st.sidebar.markdown("---")
         if st.sidebar.button("🚪 Logout"):
             self.logout()
-            return 
-
-        # ------
-        if st.session_state.get("page") == "sales_dashboard":
-            st.subheader("📊 Sales Dashboard")
-            self.show_sales_chart()
             return
 
+        # ---------------- MAIN CONTENT ---------------- #
+        if st.session_state.get("page") == "admin_dashboard":
+            st.subheader("🏠 Admin Dashboard")
+            st.write("Welcome to the Admin Dashboard.")
+        elif st.session_state.get("page") == "responsibilities":
+            self.manage_responsibilities()
+        elif st.session_state.get("page") == "roles":
+            self.manage_roles()
+        elif st.session_state.get("page") == "users":
+            self.manage_users()
+        elif st.session_state.get("page") == "sales_dashboard":
+            st.subheader("📊 Sales Dashboard")
+            self.show_sales_chart()
         elif st.session_state.get("page") == "budgeting":
             st.subheader("📈 Budgeting Section")
             self.show_budgeting_section()
-            return
-        if st.session_state.get("page")=="Purchase_dashboard":
+        elif st.session_state.get("page") == "purchase_dashboard":
             st.subheader("Purchase Dashboard")
             self.purchase()
-            return
-        if st.session_state.get("page")=="Purchase summary":
+        elif st.session_state.get("page") == "purchase_summary":
             st.subheader("Purchase Summary")
             self.view_summary()
-            return
-    
-        if admin_option == "🏠 DashBoard":
-            st.write("Welcome to the Admin Dashboard.")
-
-        elif admin_option == "🧩 Responsibilities":
-            self.manage_responsibilities()
-
-        elif admin_option == "👥 Roles":
-            self.manage_roles()
-
-        elif admin_option == "🙋 Users":
-            self.manage_users()
-
-
 
 
     def manage_responsibilities(self):
@@ -215,7 +226,7 @@ class InfowayApp():
         if st.button("Add Responsibility"):
             if new_resp and new_resp not in st.session_state.RESPONSIBILITIES:
                 st.session_state.RESPONSIBILITIES.add(new_resp)
-                save_roles_responsibilities()
+                self.save_roles_responsibilities()
                 st.success(f"Responsibility '{new_resp}' added.")
             else:
                 st.warning("Invalid or Duplicate Responsibility")
@@ -317,8 +328,6 @@ class InfowayApp():
         st.success("Logged out successfully!")
         st.rerun()
 
-
-  
     # -------------------------- Sales Chart Example --------------------------
     def show_sales_chart(self):
         st.subheader("Sales Data Charts")
@@ -365,10 +374,11 @@ class InfowayApp():
         if not os.path.exists("view_summary.csv"):
             st.error("Csv file not found")
             return
-        df=pd.read_csv("view_summary.csv")
+        df=pd.read_csv("view_summary.csv")  
         st.dataframe(df)
         st.bar_chart(df.set_index("Date")["Amount"])
 
 if __name__ == "__main__":
     app = InfowayApp()
     app.run()
+     
