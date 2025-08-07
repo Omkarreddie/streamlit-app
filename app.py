@@ -11,33 +11,48 @@ import PyPDF2
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-# This is pickling to dump and Load
+# This is pickling to dump and Loa
+
+# -------------------------- USERS --------------------------
 def save_users(users):
-    with open("USERS.pkl", "wb") as f:
+    with open("pickle_files/users.pkl", "wb") as f:
         pickle.dump(users, f)
 
 def load_users():
-    if os.path.exists("USERS.pkl"):
-        with open("USERS.pkl", "rb") as f:
+    if os.path.exists("pickle_files/users.pkl"):
+        with open("pickle_files/users.pkl", "rb") as f:
             users = pickle.load(f)
             if users:
                 return users
     return {}
 
-
-# roles and responsibilities
-def save_roles_responsibilities():
-    with open("roles_user.pkl", "wb") as f:
+# -------------------------- ROLES --------------------------
+def save_roles():
+    with open("pickle_files/roles.pkl", "wb") as f:
         pickle.dump({
-            "RESPONSIBILITIES": st.session_state.RESPONSIBILITIES,
             "ROLES_MAP": st.session_state.ROLES_MAP
         }, f)
-def load_roles_responsibilities():
-    if os.path.exists("roles_user.pkl"):
-        with open("roles_user.pkl", "rb") as f:
+
+def load_roles():
+    if os.path.exists("pickle_files/roles.pkl"):
+        with open("pickle_files/roles.pkl", "rb") as f:
             data = pickle.load(f)
-            return data.get("RESPONSIBILITIES", set()), data.get("ROLES_MAP", {})
-    return set(), {}
+            return data.get("ROLES_MAP", {})
+    return {}
+
+# -------------------------- RESPONSIBILITIES --------------------------
+def save_responsibilities():
+    with open("pickle_files/responsibilities.pkl", "wb") as f:
+        pickle.dump({
+            "RESPONSIBILITIES": st.session_state.RESPONSIBILITIES
+        }, f)
+
+def load_responsibilities():
+    if os.path.exists("pickle_files/responsibilities.pkl"):
+        with open("pickle_files/responsibilities.pkl", "rb") as f:
+            data = pickle.load(f)
+            return data.get("RESPONSIBILITIES", {})
+    return {}
 
 # -------------------------- Main App Class --------------------------
 class InfowayApp():
@@ -52,10 +67,12 @@ class InfowayApp():
             st.session_state.show_create_user_form = False
         if 'USERS' not in st.session_state:
             st.session_state.USERS = load_users()
-        if 'RESPONSIBILITIES' not in st.session_state or 'ROLES_MAP' not in st.session_state:
-                responsibilities, roles_map = load_roles_responsibilities()
-                st.session_state.RESPONSIBILITIES = responsibilities
-                st.session_state.ROLES_MAP = roles_map
+        if 'RESPONSIBILITIES' not in st.session_state:
+            responsibilities = load_responsibilities()
+            st.session_state.RESPONSIBILITIES = responsibilities
+        if 'ROLES_MAP' not in st.session_state:
+            roles_map=load_roles()
+            st.session_state.ROLES_MAP = roles_map
 
     def run(self):
         if not st.session_state.USERS:
@@ -76,7 +93,7 @@ class InfowayApp():
 
 # this is login page
     def login(self):
-        img = Image.open('logo.jpg')
+        img = Image.open('src/logo.jpg')
         st.image(img, width=250)
         st.markdown("<h1 style='color: white; font-size: 35px; text-align: center;'>Infoway Technosoft Solutions PVT LTD</h1>", unsafe_allow_html=True)
 
@@ -97,40 +114,15 @@ class InfowayApp():
                     st.error("Invalid Username or Password")
             else:
                 st.error("Invalid Username or Password")
-
+    
     def admin_dashboard(self):
         # Scrolling Welcome Banner
         st.sidebar.markdown(
-            "<marquee behaviour='scroll' direction='left' scrollamount='5' style='color: red; font-size:20px; font-style: italic;'>Welcome to the Infoway Dashboard!</marquee>",
-            unsafe_allow_html=True,
-        )
+                "<marquee behaviour='scroll' direction='left' scrollamount='5' style='color: white; font-size:20px; font-style: italic;'>Welcome to the Infoway Dashboard!</marquee>",
+                unsafe_allow_html=True,
+            )
 
         st.header("Admin Panel")
-
-        # Initialize session state for admin menu
-        if "admin_menu_open" not in st.session_state:
-            st.session_state.admin_menu_open = False
-
-        # Admin Main Menu Toggle
-        if st.sidebar.button("🛠️ Admin Menu" ):
-            st.tw("Infoway Techno Soft Solutions")
-            st.session_state.admin_menu_open = not st.session_state.admin_menu_open
-            st.session_state.page = None  # Reset page when toggling
-
-        # If Admin Menu is expanded
-        if st.session_state.admin_menu_open:
-            with st.sidebar:
-                st.markdown("**Admin Options:**")
-                if st.button("🏠 DashBoard"):
-                    st.session_state.page = "admin_dashboard"
-                if st.button("🧩 Responsibilities"):
-                    st.session_state.page = "responsibilities"
-                if st.button("👥 Roles"):
-                    st.session_state.page = "roles"
-                if st.button("🙋 Users"):
-                    st.session_state.page = "users"
-
-        # ---------------- SALES MODULE ---------------- #
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📦 Sales Module")
 
@@ -166,35 +158,32 @@ class InfowayApp():
                 if st.sidebar.button("📈 View Summary"):
                     st.session_state.page = "purchase_summary"
 
-        # ---------------- FILE UPLOAD ---------------- #
-        st.sidebar.title("📂 File Upload: PDF, Excel, CSV")
-        uploaded_file = st.sidebar.file_uploader("Choose a file", type=["csv", "xlsx", "xls", "pdf"])
+            # Initialize session state for admin menu
+        if "admin_menu_open" not in st.session_state:
+                st.session_state.admin_menu_open = False
 
-        if uploaded_file:
-            file_type = uploaded_file.name.split(".")[-1].lower()
-            if file_type == "csv":
-                df = pd.read_csv(uploaded_file)
-                st.success("CSV file uploaded successfully.")
-                st.dataframe(df)
-            elif file_type in ["xlsx", "xls"]:
-                df = pd.read_excel(uploaded_file)
-                st.success("Excel file uploaded successfully.")
-                st.dataframe(df)
-            elif file_type == "pdf":
-                st.success("PDF file uploaded successfully.")
-                try:
-                    reader = PyPDF2.PdfReader(uploaded_file)
-                    st.subheader("PDF Preview:")
-                    for i, page in enumerate(reader.pages):
-                        text = page.extract_text()
-                        st.text_area(f"Page {i+1}", text, height=200)
-                except Exception as e:
-                    st.error(f"Error reading PDF: {e}")
+            # Admin Main Menu Toggle
+        st.sidebar.markdown("Admin Portal")
+        if st.sidebar.button("Admin Portal" ):
+                st.text("Infoway Techno Soft Solutions")
+                st.session_state.admin_menu_open = not st.session_state.admin_menu_open
+                st.session_state.page = None  # Reset page when toggling
 
+            # If Admin Menu is expanded
+        if st.session_state.admin_menu_open:
+                with st.sidebar:
+                    st.markdown("**Admin Options:**")
+                    if st.button("🏠 DashBoard"):
+                        st.session_state.page = "admin_dashboard"
+                    if st.button("🧩 Responsibilities"):
+                        st.session_state.page = "responsibilities"
+                    if st.button("👥 Roles"):
+                        st.session_state.page = "roles"
+                    if st.button("🙋 Users"):
+                        st.session_state.page = "users"  
         st.sidebar.markdown("---")
         if st.sidebar.button("🚪 Logout"):
-            self.logout()
-            return
+            self.logout() 
 
         # ---------------- MAIN CONTENT ---------------- #
         if st.session_state.get("page") == "admin_dashboard":
@@ -222,17 +211,36 @@ class InfowayApp():
 
     def manage_responsibilities(self):
         st.header("Manage Responsibilities")
+
+        # ---------------- Add New Responsibility ----------------
         new_resp = st.text_input("Enter New Responsibility")
         if st.button("Add Responsibility"):
             if new_resp and new_resp not in st.session_state.RESPONSIBILITIES:
                 st.session_state.RESPONSIBILITIES.add(new_resp)
-                self.save_roles_responsibilities()
+                save_responsibilities()
                 st.success(f"Responsibility '{new_resp}' added.")
+                st.rerun()
             else:
                 st.warning("Invalid or Duplicate Responsibility")
 
+        st.markdown("---")
+
+        # ---------------- Existing Responsibilities ----------------
+        st.subheader("Existing Responsibilities")
+
+        if st.session_state.RESPONSIBILITIES:
+            st.markdown("### Responsibility List")
+            for resp in sorted(st.session_state.RESPONSIBILITIES):
+                st.markdown(f"| {resp} |")
+        else:
+            st.info("No responsibilities yet.")
+
+
+
     def manage_roles(self):
         st.header("Manage Roles")
+
+        # ---------------- Add New Role ----------------
         if not st.session_state.RESPONSIBILITIES:
             st.warning("No responsibilities defined yet. Add some first.")
         else:
@@ -240,43 +248,113 @@ class InfowayApp():
             selected_responsibilities = st.multiselect("Assign Responsibilities", list(st.session_state.RESPONSIBILITIES))
             if st.button("Add Role"):
                 if new_role and selected_responsibilities:
-                    st.session_state.ROLES_MAP[new_role] = selected_responsibilities
-                    save_roles_responsibilities()
-                    st.success(f"Role {new_role} created.")
+                    if new_role not in st.session_state.ROLES_MAP:
+                        st.session_state.ROLES_MAP[new_role] = selected_responsibilities
+                        save_roles()
+                        st.success(f"Role '{new_role}' created.")
+                        st.rerun()
+                    else:
+                        st.warning("Role already exists.")
                 else:
                     st.warning("Enter a role and select responsibilities")
 
+        st.markdown("---")
+
+        # ---------------- Existing Roles ----------------
+        st.subheader("Existing Roles")
+
+        if st.session_state.ROLES_MAP:
+            for role, responsibilities in sorted(st.session_state.ROLES_MAP.items()):
+                with st.expander(f"Role: {role}"):
+                    st.markdown("**Responsibilities:**")
+                    for r in responsibilities:
+                        st.markdown(f"- {r}")
+        else:
+            st.info("No roles defined yet.")
+
+
     def manage_users(self):
         st.header("User Access")
+
         if st.button("Create New User"):
             st.session_state.show_create_user_form = True
+            st.session_state._editing_user = None  # Ensure it's not edit mode
+
         if st.session_state.show_create_user_form:
             self.createuser()
+
         st.subheader("Registered Users")
+
         for name, details in st.session_state.USERS.items():
             [role] = details[1] if isinstance(details[1], list) else [details[1]]
-            st.write(f"{name}| Role:{role} | Email: {details[2]}")
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.write(f"**{name}** | Role: {role} | Email: {details[2]}")
+            with col2:
+                if st.button("✏️ Edit", key=f"edit_{name}"):
+                    st.session_state._editing_user = name
+                    st.session_state.show_create_user_form = True
+                    st.rerun()
+
     def createuser(self):
-        st.title("Create New User")
-        with st.form("Create_user_form"):
-            username = st.text_input("Username")
-            email = st.text_input("Email")
-            password = st.text_input("Password", type="password")
-            roles = st.multiselect("Select Roles", list(st.session_state.ROLES_MAP.keys()), key="add_user_roles")
-            submitted = st.form_submit_button("Create User")
+        is_edit_mode = st.session_state.get("_editing_user") is not None
+        user_to_edit = st.session_state.get("_editing_user")
+
+        st.title("Edit User" if is_edit_mode else "Create New User")
+
+        if is_edit_mode:
+            user_data = st.session_state.USERS[user_to_edit]
+            default_email = user_data[2]
+            saved_roles = user_data[1]
+        else:
+            default_email = ""
+            saved_roles = []
+
+        available_roles = list(st.session_state.ROLES_MAP.keys())
+        valid_saved_roles = [r for r in saved_roles if r in available_roles]
+
+        with st.form("create_user_form"):
+            username = st.text_input("Username", value=user_to_edit if is_edit_mode else "")
+            email = st.text_input("Email", value=default_email)
+            password = st.text_input("Password (leave blank to keep same)", type="password")
+            roles = st.multiselect("Select Roles", available_roles, default=valid_saved_roles, key="add_user_roles")
+
+            submitted = st.form_submit_button("Update User" if is_edit_mode else "Create User")
 
         if submitted:
-            if username in st.session_state.USERS:
-                st.warning("Username already exists")
-            elif not username or not email or not password:
-                st.error("Please fill all details")
-            else:
-                hashed_pw = hash_password(password)
+            if not username or not email:
+                st.error("Please fill all required fields")
+                return
+
+            if is_edit_mode:
+                # Check if username changed and is already taken
+                if username != user_to_edit and username in st.session_state.USERS:
+                    st.warning("New username already exists")
+                    return
+
+                # Keep old password if not changed
+                hashed_pw = hash_password(password) if password else st.session_state.USERS[user_to_edit][0]
+
+                # If username changed, remove old record
+                if username != user_to_edit:
+                    del st.session_state.USERS[user_to_edit]
+
                 st.session_state.USERS[username] = [hashed_pw, roles, email]
-                save_users(st.session_state.USERS)
-                st.success("User created successfully")
-                st.session_state.show_create_user_form = False
-                st.rerun()
+                st.success("User updated successfully")
+
+            else:
+                if username in st.session_state.USERS:
+                    st.warning("Username already exists")
+                else:
+                    hashed_pw = hash_password(password)
+                    st.session_state.USERS[username] = [hashed_pw, roles, email]
+                    st.success("User created successfully")
+
+            save_users(st.session_state.USERS)
+            st.session_state.show_create_user_form = False
+            st.session_state._editing_user = None
+            st.rerun()
+
 
     def user_dashboard(self):
         st.title("User Dashboard")
@@ -326,15 +404,14 @@ class InfowayApp():
         st.session_state.role = ""
         st.session_state.page = "home"
         st.success("Logged out successfully!")
-        st.rerun()
-
+        st.rerun()   
     # -------------------------- Sales Chart Example --------------------------
     def show_sales_chart(self):
         st.subheader("Sales Data Charts")
-        if not os.path.exists("sales_data.csv"):
+        if not os.path.exists("data/sales_data.csv"):
             st.error("Your file does not exist")
             return
-        df = pd.read_csv("sales_data.csv")
+        df = pd.read_csv("data/sales_data.csv")
         st.dataframe(df)
         st.bar_chart(data=df, x="City", y="Total")
         data = {
@@ -362,19 +439,19 @@ class InfowayApp():
         st.bar_chart(df_budget.set_index("Department"))
     def purchase(self):
         st.write("Purchase dashboard")
-        if not os.path.exists("purchase.csv"):
+        if not os.path.exists("data/purchase.csv"):
             st.error("Csv file not found")
             return
-        df=pd.read_csv("purchase.csv")
+        df=pd.read_csv("data/purchase.csv")
         st.dataframe(df)
         st.line_chart(df.set_index("Date")["Amount"])
     
     def view_summary(self):
         st.write("Purchase Summary")
-        if not os.path.exists("view_summary.csv"):
+        if not os.path.exists("data/view_summary.csv"):
             st.error("Csv file not found")
             return
-        df=pd.read_csv("view_summary.csv")  
+        df=pd.read_csv("data/view_summary.csv")  
         st.dataframe(df)
         st.bar_chart(df.set_index("Date")["Amount"])
 
